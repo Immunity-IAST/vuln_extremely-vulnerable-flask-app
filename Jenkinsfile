@@ -4,7 +4,7 @@ pipeline {
         DIRECTORY = '.'
         APP_PORT = '88'
         IMMUNITY_HOST = 'immunity'
-        IMMUNITY_PORT = '81'
+        IMMUNITY_PORT = '8000'
         IMMUNITY_PROJECT = 'vuln_vulnerable-flask-app'
         FARADAY_URL = credentials('FARADAY_URL')
         FARADAY_LOGIN = credentials('FARADAY_LOGIN')
@@ -71,8 +71,8 @@ pipeline {
         stage('Run application') {
             steps {
                 sh 'docker network create dast_scan || true'
-                sh 'docker run -d --name test --network dast_scan python_vulnapp'
-                sh 'docker network connect iast_global test'
+                sh 'docker run -d --name test_vuln_flask --network dast_scan python_vulnapp'
+                sh 'docker network connect iast_global test_vuln_flask'
             }
         }
         stage('DAST (OWASP ZAP)') {
@@ -89,11 +89,11 @@ pipeline {
                 sh 'cp -r * /zap/wrk/'
 
                 echo 'Running DAST...'
-                sh "zap-baseline.py -t http://test:${APP_PORT} -x zap_dast_baseline.xml || true"
+                sh "zap-baseline.py -t http://test_vuln_flask:${APP_PORT} -x zap_dast_baseline.xml || true"
                 sh 'cp /zap/wrk/zap_dast_baseline.xml .'
 
                 echo 'Running DAST...'
-                sh "zap-full-scan.py -t http://test:${APP_PORT} -x zap_dast_full.xml || true"
+                sh "zap-full-scan.py -t http://test_vuln_flask:${APP_PORT} -x zap_dast_full.xml || true"
                 sh 'cp /zap/wrk/zap_dast_full.xml .'
 
                 echo 'Here is the report...'
@@ -113,19 +113,19 @@ pipeline {
             }
             steps {
                 sh 'apt update && apt install nikto -y'
-                sh "nikto -h http://test:${APP_PORT} -Format XML -output nikto_dast.xml || true"
+                sh "nikto -h http://test_vuln_flask:${APP_PORT} -Format XML -output nikto_dast.xml || true"
 
                 archiveArtifacts artifacts: 'nikto_dast.xml', allowEmptyArchive: true, fingerprint: true
             }
         }
         stage('Container logs') {
             steps {
-                sh 'docker logs test | head -n 100'
+                sh 'docker logs test_vuln_flask | head -n 100'
             }
         }
         stage('Stop application') {
             steps {
-                sh 'docker stop test && docker rm test'
+                sh 'docker stop test_vuln_flask && docker rm test_vuln_flask'
                 sh 'docker rmi python_vulnapp'
             }
         }
@@ -163,8 +163,8 @@ pipeline {
     }
     post {
         always {
-            sh 'docker stop test || true'
-            sh 'docker rm test || true'
+            sh 'docker stop test_vuln_flask || true'
+            sh 'docker rm test_vuln_flask || true'
             sh 'docker rmi python_vulnapp || true'
             cleanWs()
         }
