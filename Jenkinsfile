@@ -60,7 +60,7 @@ pipeline {
         stage ("Build application") {
             steps {
                 sh "docker build \
-                        --tag python_vulnapp \
+                        --tag python_vulnapp_flask \
                         --build-arg IMMUNITY_HOST=${IMMUNITY_HOST} \
                         --build-arg IMMUNITY_PORT=${IMMUNITY_PORT} \
                         --build-arg IMMUNITY_PROJECT=${IMMUNITY_PROJECT} \
@@ -71,7 +71,7 @@ pipeline {
         stage('Run application') {
             steps {
                 sh 'docker network create dast_scan || true'
-                sh 'docker run -d --name test_vuln_flask --network dast_scan python_vulnapp'
+                sh 'docker run -d --name test_vuln_flask --network dast_scan python_vulnapp_flask'
                 sh 'docker network connect iast_global test_vuln_flask'
             }
         }
@@ -126,7 +126,7 @@ pipeline {
         stage('Stop application') {
             steps {
                 sh 'docker stop test_vuln_flask && docker rm test_vuln_flask'
-                sh 'docker rmi python_vulnapp'
+                sh 'docker rmi python_vulnapp_flask'
             }
         }
         stage('Upload reports') {
@@ -165,7 +165,7 @@ pipeline {
         always {
             sh 'docker stop test_vuln_flask || true'
             sh 'docker rm test_vuln_flask || true'
-            sh 'docker rmi python_vulnapp || true'
+            sh 'docker rmi python_vulnapp_flask || true'
             cleanWs()
         }
     }
