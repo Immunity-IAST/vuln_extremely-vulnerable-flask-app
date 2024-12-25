@@ -8,7 +8,16 @@ from flask import (Flask, render_template, render_template_string, request,
 from db_seed import setup_db
 from routes import init
 
+from os import environ
+from immunity_agent.middlewares.flask_middleware import ImmunityFlaskMiddleware
+
 app = Flask(__name__)
+
+IMMUNITY_INSTRUMENTED = environ.get("INSTRUMENTED", False)
+
+if IMMUNITY_INSTRUMENTED:
+    app.wsgi_app = ImmunityFlaskMiddleware(app.wsgi_app, app.root_path)
+
 app.secret_key = 'super secret key'
 app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 app.config['CKEDITOR_SERVE_LOCAL'] = True
